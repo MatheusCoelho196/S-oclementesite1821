@@ -1,0 +1,3 @@
+[build]
+  command = "node gerar.js"
+  publish = "dist"
