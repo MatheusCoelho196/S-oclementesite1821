@@ -6,14 +6,9 @@
 <title>{{NOME}} — São Clemente</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+{{META_PIXEL}}
 <style>
-  :root{
-    --azul-primario:#134793;
-    --azul-secundario:#385fc7;
-    --branco:#FFFFFF;
-    --fundo:#FAFAF9;
-    --texto:#1C1C1C;
-  }
+  {{TEMA_CSS}}
   *{ box-sizing:border-box; margin:0; padding:0; }
   body{
     font-family:'Inter',sans-serif;
@@ -71,6 +66,7 @@
     background:var(--branco);
     border:1px solid rgba(28,28,28,0.06);
     cursor:zoom-in;
+    box-shadow:{{FOTO_SOMBRA}};
   }
 
   .modal-overlay{
@@ -85,7 +81,7 @@
   }
   .modal-overlay[hidden]{ display:none; }
   .modal-card{
-    background:var(--fundo);
+    background:{{MODAL_BG}};
     border-radius:4px;
     max-width:440px;
     width:100%;
@@ -213,6 +209,17 @@
     outline:2px solid var(--azul-secundario);
     outline-offset:2px;
   }
+  .swatch--texto{
+    width:auto;
+    height:auto;
+    border-radius:12px;
+    padding:4px 12px;
+    font-size:11px;
+    font-family:'Inter',sans-serif;
+    color:var(--texto);
+    background:var(--branco);
+    border:1px solid rgba(28,28,28,0.15);
+  }
 
   .cta{
     display:inline-block;
@@ -276,7 +283,21 @@
     const FOTOS = {{FOTOS_JSON}};
     const CORES = Object.keys(FOTOS);
     const CORES_HEX = { "Branco":"#FFFFFF", "Cinza":"#B0B0AC", "Preto":"#1C1C1C", "Grafite":"#2B2B2B" };
+    const RÓTULOS_TEXTO = ["Piso", "Ambiente"];
+    const FB_CONTENT_IDS = {{FB_CONTENT_IDS_JSON}};
+    const FB_VALOR = {{PRECO_VALOR}};
     let indiceAtual = 0;
+
+    function dispararViewContent(cor) {
+      if (typeof fbq === 'function') {
+        fbq('track', 'ViewContent', {
+          content_ids: [FB_CONTENT_IDS[cor]],
+          content_type: 'product',
+          value: FB_VALOR,
+          currency: 'BRL'
+        });
+      }
+    }
 
     function atualizarFoto() {
       const cor = CORES[indiceAtual];
@@ -286,6 +307,7 @@
       document.querySelectorAll('.swatches .swatch').forEach((el, i) => {
         el.setAttribute('aria-pressed', i === indiceAtual ? 'true' : 'false');
       });
+      dispararViewContent(cor);
     }
 
     function mudarFoto(direcao) {
@@ -303,13 +325,20 @@
     const modalCores = document.getElementById('modal-cores');
     CORES.forEach((cor) => {
       const item = document.createElement('div');
-      const bolinha = document.createElement('span');
-      bolinha.className = 'swatch';
-      bolinha.style.background = CORES_HEX[cor] || '#CCCCCC';
-      const label = document.createElement('span');
-      label.textContent = cor;
-      item.appendChild(bolinha);
-      item.appendChild(label);
+      if (RÓTULOS_TEXTO.includes(cor)) {
+        const pilula = document.createElement('span');
+        pilula.className = 'swatch swatch--texto';
+        pilula.textContent = cor;
+        item.appendChild(pilula);
+      } else {
+        const bolinha = document.createElement('span');
+        bolinha.className = 'swatch';
+        bolinha.style.background = CORES_HEX[cor] || '#CCCCCC';
+        const label = document.createElement('span');
+        label.textContent = cor;
+        item.appendChild(bolinha);
+        item.appendChild(label);
+      }
       modalCores.appendChild(item);
     });
 

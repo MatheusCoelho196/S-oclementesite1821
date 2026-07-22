@@ -6,14 +6,9 @@
 <title>{{CATEGORIA}} — São Clemente</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+{{META_PIXEL}}
 <style>
-  :root{
-    --azul-primario:#134793;
-    --azul-secundario:#385fc7;
-    --branco:#FFFFFF;
-    --fundo:#FAFAF9;
-    --texto:#1C1C1C;
-  }
+  {{TEMA_CSS}}
   *{ box-sizing:border-box; margin:0; padding:0; }
   body{
     font-family:'Inter',sans-serif;
@@ -91,6 +86,7 @@
     border:1px solid rgba(28,28,28,0.06);
     margin-bottom:16px;
     cursor:zoom-in;
+    box-shadow:{{FOTO_SOMBRA}};
   }
   .slide img{
     width:100%;
@@ -131,7 +127,7 @@
   }
   .modal-overlay[hidden]{ display:none; }
   .modal-card{
-    background:var(--fundo);
+    background:{{MODAL_BG}};
     border-radius:4px;
     max-width:440px;
     width:100%;
@@ -190,6 +186,14 @@
     border-radius:50%;
     display:inline-block;
     border:1px solid rgba(28,28,28,0.15);
+  }
+  .modal-cores .swatch--texto{
+    width:auto;
+    height:auto;
+    border-radius:12px;
+    padding:4px 12px;
+    font-size:11px;
+    background:var(--branco);
   }
 
   .modal-whatsapp{
@@ -264,6 +268,7 @@
 
   <script>
     const CORES_HEX = { "Branco":"#FFFFFF", "Cinza":"#B0B0AC", "Preto":"#1C1C1C", "Grafite":"#2B2B2B" };
+    const RÓTULOS_TEXTO = ["Piso", "Ambiente"];
 
     function decodificarInfo(base64) {
       const binario = atob(base64);
@@ -281,13 +286,20 @@
       modalCores.innerHTML = '';
       info.cores.forEach((cor) => {
         const item = document.createElement('div');
-        const bolinha = document.createElement('span');
-        bolinha.className = 'swatch';
-        bolinha.style.background = CORES_HEX[cor] || '#CCCCCC';
-        const label = document.createElement('span');
-        label.textContent = cor;
-        item.appendChild(bolinha);
-        item.appendChild(label);
+        if (RÓTULOS_TEXTO.includes(cor)) {
+          const pilula = document.createElement('span');
+          pilula.className = 'swatch swatch--texto';
+          pilula.textContent = cor;
+          item.appendChild(pilula);
+        } else {
+          const bolinha = document.createElement('span');
+          bolinha.className = 'swatch';
+          bolinha.style.background = CORES_HEX[cor] || '#CCCCCC';
+          const label = document.createElement('span');
+          label.textContent = cor;
+          item.appendChild(bolinha);
+          item.appendChild(label);
+        }
         modalCores.appendChild(item);
       });
 

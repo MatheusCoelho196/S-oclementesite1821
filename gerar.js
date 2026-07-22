@@ -41,10 +41,73 @@ const WHATSAPP_GENERICO = `https://wa.me/${WHATSAPP_NUMERO}`;
 const WHATSAPP_MSG_PRODUTO = encodeURIComponent("Olá, gostaria de ver este produto.");
 const WHATSAPP_PRODUTO = `https://wa.me/${WHATSAPP_NUMERO}?text=${WHATSAPP_MSG_PRODUTO}`;
 
+// Meta Pixel — carrega em toda página (home, vitrine e produto)
+const META_PIXEL = `<script>
+!function(f,b,e,v,n,t,s)
+{if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+n.queue=[];t=b.createElement(e);t.async=!0;
+t.src=v;s=b.getElementsByTagName(e)[0];
+s.parentNode.insertBefore(t,s)}(window, document,'script',
+'https://connect.facebook.net/en_US/fbevents.js');
+fbq('init', '1994455697855559');
+fbq('track', 'PageView');
+</script>
+<noscript><img height="1" width="1" style="display:none"
+src="https://www.facebook.com/tr?id=1994455697855559&ev=PageView&noscript=1"
+/></noscript>`;
+
+// Mesma lógica de slug usada no catálogo do Facebook (catalogo-sao-clemente.xlsx),
+// pra o content_id do Pixel bater exatamente com o content_id do catálogo.
+function slugifyCor(cor) {
+  return cor
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
+function precoParaNumero(precoStr) {
+  // "R$ 1.050,00" -> 1050.00
+  const num = precoStr.replace("R$", "").trim().replace(/\./g, "").replace(",", ".");
+  return parseFloat(num);
+}
+
 // Uma entrada por categoria. Pra adicionar uma nova, é só somar uma linha aqui.
+// "tema" escolhe entre os temas visuais definidos em TEMAS (abaixo).
 const CATEGORIAS = [
-  { slug: "armarios-cozinha", nome: "Armários de Cozinha" },
+  { slug: "armarios-cozinha", nome: "Armários de Cozinha", tema: "claro" },
+  { slug: "ceramicas", nome: "Cerâmicas", tema: "pedra" },
+  { slug: "porcelanato", nome: "Porcelanato", tema: "pedra" },
 ];
+
+// Temas visuais disponíveis. "claro" é o original (móveis Cozimax);
+// "pedra" é o fundo tom pedra/concreto usado nas categorias de piso,
+// pra foto ficar em destaque tipo showroom.
+const TEMAS = {
+  claro: {
+    css: `:root{
+      --azul-primario:#134793;
+      --azul-secundario:#385fc7;
+      --branco:#FFFFFF;
+      --fundo:#FAFAF9;
+      --texto:#1C1C1C;
+    }`,
+    fotoSombra: "none",
+    modalBg: "var(--fundo)",
+  },
+  pedra: {
+    css: `:root{
+      --azul-primario:#134793;
+      --azul-secundario:#385fc7;
+      --branco:#FFFFFF;
+      --fundo:#E8E4DB;
+      --texto:#2A2825;
+    }`,
+    fotoSombra: "0 20px 40px -24px rgba(42,40,37,0.35)",
+    modalBg: "var(--branco)",
+  },
+};
 
 // Cores conhecidas do catálogo — usadas só pra desenhar a pastilha visual
 const CORES_HEX = {
@@ -54,10 +117,17 @@ const CORES_HEX = {
   "Grafite": "#2B2B2B",
 };
 
+// Rótulos que não são cor de verdade (ex: pisos com foto do produto + foto do
+// ambiente, em vez de variação de cor) — viram pílula de texto, não bolinha.
+const RÓTULOS_TEXTO = ["Piso", "Ambiente"];
+
 function montarSwatches(cores) {
   if (!cores || !cores.length) return "";
   return cores
     .map((cor) => {
+      if (RÓTULOS_TEXTO.includes(cor)) {
+        return `<button type="button" class="swatch swatch--texto" title="${cor}" aria-label="Ver ${cor}">${cor}</button>`;
+      }
       const hex = CORES_HEX[cor] || "#CCCCCC";
       return `<button type="button" class="swatch" style="background:${hex}" title="${cor}" aria-label="Ver cor ${cor}"></button>`;
     })
@@ -79,9 +149,14 @@ function carregarProdutos(produtosDir) {
     .map((f) => JSON.parse(fs.readFileSync(path.join(produtosDir, f), "utf-8")));
 }
 
-function gerarLPIndividual(produto, templateProduto, outDir) {
+function gerarLPIndividual(produto, templateProduto, outDir, tema) {
   const cores = Object.keys(produto.fotos);
   const fotoPadrao = produto.fotos[cores[0]];
+
+  const contentIds = {};
+  cores.forEach((cor) => {
+    contentIds[cor] = `${produto.slug}-${slugifyCor(cor)}`;
+  });
 
   const html = templateProduto
     .replaceAll("{{NOME}}", produto.nome)
@@ -90,6 +165,12 @@ function gerarLPIndividual(produto, templateProduto, outDir) {
     .replaceAll("{{FOTO}}", fotoPadrao)
     .replaceAll("{{SWATCHES}}", montarSwatches(cores))
     .replaceAll("{{FOTOS_JSON}}", JSON.stringify(produto.fotos))
+    .replaceAll("{{FB_CONTENT_IDS_JSON}}", JSON.stringify(contentIds))
+    .replaceAll("{{PRECO_VALOR}}", precoParaNumero(produto.preco))
+    .replaceAll("{{META_PIXEL}}", META_PIXEL)
+    .replaceAll("{{TEMA_CSS}}", tema.css)
+    .replaceAll("{{FOTO_SOMBRA}}", tema.fotoSombra)
+    .replaceAll("{{MODAL_BG}}", tema.modalBg)
     .replaceAll("{{LOGO_SVG}}", LOGO_SVG)
     .replaceAll("{{WHATSAPP_GENERICO}}", WHATSAPP_GENERICO)
     .replaceAll("{{WHATSAPP_PRODUTO}}", WHATSAPP_PRODUTO);
@@ -118,7 +199,7 @@ function gerarSlide(produto, cor) {
     </a>`;
 }
 
-function gerarVitrine(categoria, produtos, templateVitrine, outDir) {
+function gerarVitrine(categoria, produtos, templateVitrine, outDir, tema) {
   const slides = produtos
     .flatMap((p) => Object.keys(p.fotos).map((cor) => gerarSlide(p, cor)))
     .join("\n");
@@ -126,6 +207,10 @@ function gerarVitrine(categoria, produtos, templateVitrine, outDir) {
   const html = templateVitrine
     .replaceAll("{{CATEGORIA}}", categoria.nome)
     .replaceAll("{{SLIDES}}", slides)
+    .replaceAll("{{META_PIXEL}}", META_PIXEL)
+    .replaceAll("{{TEMA_CSS}}", tema.css)
+    .replaceAll("{{FOTO_SOMBRA}}", tema.fotoSombra)
+    .replaceAll("{{MODAL_BG}}", tema.modalBg)
     .replaceAll("{{LOGO_SVG}}", LOGO_SVG)
     .replaceAll("{{WHATSAPP_GENERICO}}", WHATSAPP_GENERICO)
     .replaceAll("{{WHATSAPP_PRODUTO}}", WHATSAPP_PRODUTO);
@@ -152,6 +237,7 @@ function gerarCategoriaCard(categoria, foto) {
 function gerarHomepage(cards, templateHome) {
   const html = templateHome
     .replaceAll("{{CATEGORIAS_CARDS}}", cards.join("\n"))
+    .replaceAll("{{META_PIXEL}}", META_PIXEL)
     .replaceAll("{{LOGO_SVG}}", LOGO_SVG)
     .replaceAll("{{WHATSAPP_GENERICO}}", WHATSAPP_GENERICO);
 
@@ -170,14 +256,19 @@ function main() {
   const cardsHomepage = [];
 
   CATEGORIAS.forEach((categoria) => {
+    const tema = TEMAS[categoria.tema];
+    if (!tema) {
+      throw new Error(`Categoria "${categoria.slug}" usa tema "${categoria.tema}" que não existe em TEMAS.`);
+    }
+
     const produtosDir = path.join(BASE_DIR, "categorias", categoria.slug, "produtos");
     const produtos = carregarProdutos(produtosDir);
     const categoriaOutDir = path.join(DIST_DIR, categoria.slug);
 
     produtos.forEach((p) =>
-      gerarLPIndividual(p, templateProduto, path.join(categoriaOutDir, "produtos"))
+      gerarLPIndividual(p, templateProduto, path.join(categoriaOutDir, "produtos"), tema)
     );
-    const fotoRepresentativa = gerarVitrine(categoria, produtos, templateVitrine, categoriaOutDir);
+    const fotoRepresentativa = gerarVitrine(categoria, produtos, templateVitrine, categoriaOutDir, tema);
     cardsHomepage.push(gerarCategoriaCard(categoria, fotoRepresentativa));
 
     console.log(`✅ ${produtos.length} LPs geradas em /dist/${categoria.slug}/produtos`);
