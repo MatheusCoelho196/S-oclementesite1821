@@ -58,6 +58,34 @@ fbq('track', 'PageView');
 src="https://www.facebook.com/tr?id=1994455697855559&ev=PageView&noscript=1"
 /></noscript>`;
 
+// Google Ads (gtag.js) — carrega em toda página (home, vitrine e produto)
+// AW-10832482936 = ID da conta de Google Ads (São Clemente)
+const GOOGLE_ADS_ID = "AW-10832482936";
+
+// Rótulo de conversão do clique no WhatsApp.
+// Pegue em: Google Ads > Objetivos > Conversões > "Clique no WhatsApp" >
+// Configuração da tag > Instalar você mesmo > Instalar a tag manualmente.
+// Vem no formato AW-10832482936/AbC-D_efgHIJklmnOPQ — cole só a parte depois da barra "/".
+const GOOGLE_ADS_CONVERSION_LABEL = "COLE_AQUI_O_ROTULO_DE_CONVERSAO";
+
+const GOOGLE_TAG = `<script async src="https://www.googletagmanager.com/gtag/js?id=${GOOGLE_ADS_ID}"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', '${GOOGLE_ADS_ID}');
+
+  // Dispara conversão sempre que alguém clicar em qualquer link do WhatsApp
+  // (botão do cabeçalho, CTA da vitrine ou CTA da página de produto).
+  document.addEventListener('click', function (e) {
+    var link = e.target.closest('a[href*="wa.me"]');
+    if (!link) return;
+    gtag('event', 'conversion', {
+      'send_to': '${GOOGLE_ADS_ID}/${GOOGLE_ADS_CONVERSION_LABEL}'
+    });
+  });
+</script>`;
+
 // Mesma lógica de slug usada no catálogo do Facebook (catalogo-sao-clemente.xlsx),
 // pra o content_id do Pixel bater exatamente com o content_id do catálogo.
 function slugifyCor(cor) {
@@ -168,6 +196,7 @@ function gerarLPIndividual(produto, templateProduto, outDir, tema) {
     .replaceAll("{{FB_CONTENT_IDS_JSON}}", JSON.stringify(contentIds))
     .replaceAll("{{PRECO_VALOR}}", precoParaNumero(produto.preco))
     .replaceAll("{{META_PIXEL}}", META_PIXEL)
+    .replaceAll("{{GOOGLE_TAG}}", GOOGLE_TAG)
     .replaceAll("{{TEMA_CSS}}", tema.css)
     .replaceAll("{{FOTO_SOMBRA}}", tema.fotoSombra)
     .replaceAll("{{MODAL_BG}}", tema.modalBg)
@@ -208,6 +237,7 @@ function gerarVitrine(categoria, produtos, templateVitrine, outDir, tema) {
     .replaceAll("{{CATEGORIA}}", categoria.nome)
     .replaceAll("{{SLIDES}}", slides)
     .replaceAll("{{META_PIXEL}}", META_PIXEL)
+    .replaceAll("{{GOOGLE_TAG}}", GOOGLE_TAG)
     .replaceAll("{{TEMA_CSS}}", tema.css)
     .replaceAll("{{FOTO_SOMBRA}}", tema.fotoSombra)
     .replaceAll("{{MODAL_BG}}", tema.modalBg)
@@ -238,6 +268,7 @@ function gerarHomepage(cards, templateHome) {
   const html = templateHome
     .replaceAll("{{CATEGORIAS_CARDS}}", cards.join("\n"))
     .replaceAll("{{META_PIXEL}}", META_PIXEL)
+    .replaceAll("{{GOOGLE_TAG}}", GOOGLE_TAG)
     .replaceAll("{{LOGO_SVG}}", LOGO_SVG)
     .replaceAll("{{WHATSAPP_GENERICO}}", WHATSAPP_GENERICO);
 
